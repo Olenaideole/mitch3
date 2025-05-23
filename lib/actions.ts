@@ -174,14 +174,14 @@ If the text cannot be read, respond with:
             Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
           },
           body: JSON.stringify({
-            model: "gpt-4o",
+            model: "gpt-4.1",
             messages: [
               {
                 role: "user",
                 content: [
-                  { type: "text", text: promptText },
+                  { type: "input_text", text: promptText },
                   // Fix: image_url should be an object with a url property
-                  { type: "image_url", image_url: { url: dataURI } },
+                 { type: "input_image", image_url: dataURI },
                 ],
               },
             ],
