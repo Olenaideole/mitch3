@@ -14,5 +14,6 @@ export async function GET(request: NextRequest) {
   }
 
   // URL to redirect to after sign in process completes
-  return NextResponse.redirect(requestUrl.origin + "/dashboard")
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || requestUrl.origin
+return NextResponse.redirect(baseUrl + "/dashboard")
 }
