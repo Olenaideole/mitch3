@@ -70,7 +70,7 @@ export default function SignUp() {
       }
 
       // Get the current domain for the redirect URL
-      const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined
+      const redirectTo = process.env.NEXT_PUBLIC_BASE_URL + "/auth/callback"
 
       const { error } = await supabase.auth.signUp({
         email,
