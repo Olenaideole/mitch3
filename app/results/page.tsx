@@ -118,7 +118,7 @@ export default function ResultsPage() {
 
   const handleDownloadPDF = () => {
     // In a real app, this would generate and download a PDF
-    alert("In a real app, this would download a PDF report")
+    alert("Coming soon")
   }
 
   return (
