@@ -186,7 +186,6 @@ If the text cannot be read, respond with:
           {
             type: "image_url",
             image_url: { url: dataURI },
-                ],
               },
             ],
             temperature: 0.2, // Lower temperature for more consistent results
