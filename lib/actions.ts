@@ -174,21 +174,24 @@ If the text cannot be read, respond with:
             Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
           },
           body: JSON.stringify({
-            model: "gpt-4o", // или "gpt-4-vision-preview"
-            messages: [
-              {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: promptText,
-          },
-          {
-            type: "image_url",
-            image_url: { url: dataURI },
-              },
-            ],
-            temperature: 0.2, // Lower temperature for more consistent results
+  model: "gpt-4o", // или "gpt-4-vision-preview"
+  messages: [
+    {
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: promptText,
+        },
+        {
+          type: "image_url",
+          image_url: { url: dataURI },
+        }
+      ]
+    }
+  ],
+  temperature: 0.2 // <-- здесь, на одном уровне с messages и model
+})
           }),
         })
 
