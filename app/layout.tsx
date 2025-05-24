@@ -17,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
+        <link rel="icon" type="image/png" href="/mitch.png" />
         <Script defer data-domain="getmitch.app" src="https://plausible.io/js/script.js" strategy="afterInteractive" />
       </head>
       <body className={inter.className}>
