@@ -1,5 +1,11 @@
 "use server"
 
+import sharp from 'sharp';
+import crypto from 'crypto';
+
+// TODO: Consider implementing a more sophisticated cache eviction strategy if memory usage becomes an issue (e.g., LRU cache).
+const imageAnalysisCache = new Map();
+
 // Flag to enable mock response for testing - set to false to use real API calls
 const USE_MOCK_RESPONSE = false
 
@@ -86,14 +92,79 @@ export async function analyzeImage(formData: FormData) {
 
     // Get the image data
     const arrayBuffer = await imageFile.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
+    const originalBuffer = Buffer.from(arrayBuffer)
 
-    // Convert to base64 with proper format
-    const base64Image = buffer.toString("base64")
-    const mimeType = imageFile.type || "image/jpeg"
-    const dataURI = `data:${mimeType};base64,${base64Image}`
+    // Generate hash from original image buffer for cache key
+    const hash = crypto.createHash('sha256').update(originalBuffer).digest('hex');
 
-    console.log("Image converted to data URI, length:", dataURI.length)
+    // Check cache
+    if (imageAnalysisCache.has(hash)) {
+      console.log(`Cache hit for image hash: ${hash}`);
+      return imageAnalysisCache.get(hash);
+    }
+    console.log(`Cache miss for image hash: ${hash}`);
+
+    console.log("Original image size:", originalBuffer.length)
+
+    // Process image with sharp
+    let dataURI;
+    try {
+      const image = sharp(originalBuffer);
+      const metadata = await image.metadata();
+      console.log("Original dimensions:", metadata.width, "x", metadata.height);
+
+      const targetDimension = 1024;
+      let newWidth, newHeight;
+
+      if (metadata.width && metadata.height) {
+        if (metadata.width > metadata.height) {
+          newWidth = Math.min(metadata.width, targetDimension);
+          newHeight = Math.round((metadata.height / metadata.width) * newWidth);
+        } else {
+          newHeight = Math.min(metadata.height, targetDimension);
+          newWidth = Math.round((metadata.width / metadata.height) * newHeight);
+        }
+      } else {
+        // Fallback if metadata is not available (should not happen with sharp)
+        newWidth = targetDimension;
+        newHeight = targetDimension;
+        console.warn("Image metadata not available, using default target dimensions for resizing.")
+      }
+      
+      // Ensure not to upscale if the image is smaller than targetDimension
+      if (metadata.width && metadata.height && (newWidth > metadata.width || newHeight > metadata.height)) {
+        newWidth = metadata.width;
+        newHeight = metadata.height;
+        console.log("Image is smaller than target, using original dimensions:", newWidth, "x", newHeight);
+      }
+
+
+      const resizedImageBuffer = await image
+        .resize({
+          width: newWidth,
+          height: newHeight,
+          fit: 'inside', // Preserves aspect ratio
+          withoutEnlargement: true // Prevents upscaling
+        })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+
+      console.log("Resized image size:", resizedImageBuffer.length);
+      console.log("Resized dimensions:", newWidth, "x", newHeight);
+
+      const base64Image = resizedImageBuffer.toString('base64');
+      const mimeType = 'image/jpeg'; // Since we converted to JPEG
+      dataURI = `data:${mimeType};base64,${base64Image}`;
+    } catch (error) {
+      console.error("Error processing image with sharp:", error);
+      // Fallback to original image if sharp processing fails
+      const base64Image = originalBuffer.toString("base64")
+      const mimeType = imageFile.type || "image/jpeg"
+      dataURI = `data:${mimeType};base64,${base64Image}`
+      console.warn("Falling back to original image due to processing error. URI length:", dataURI.length)
+    }
+    
+    console.log("Final data URI length:", dataURI.length)
 
     // Prepare the improved prompt for OpenAI
     const promptText = `You are an expert food safety assistant for people with celiac disease.
@@ -107,11 +178,11 @@ Then, based on the extracted text, analyze it for the following:
 - Identify cross-contamination risks like 'may contain traces of wheat'.
 - Check for labels like 'gluten-free certified'.
 
-For each detected ingredient, provide:
+For each ingredient, provide:
 - Whether it contains gluten (yes/no/maybe)
 - Health safety level for celiac patients (safe/caution/unsafe)
-- Short description of the ingredient
-- Any specific concerns for celiac patients, or 'None' if safe.
+- Brief description of the ingredient
+- Concise concerns for celiac patients, or 'None' if safe.
 
 IMPORTANT: Return ONLY a valid JSON object in exactly this format without any extra text or markdown:
 
@@ -174,6 +245,10 @@ If the text cannot be read, respond with:
             Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
           },
           body: JSON.stringify({
+            // TODO: Investigate using "gpt-4-turbo" as a potentially more cost-effective model.
+            // It also supports vision and might offer a good balance between performance and cost
+            // for this image analysis task. Thorough testing would be needed to ensure quality
+            // is maintained.
             model: "gpt-4o",
             messages: [
               {
@@ -263,6 +338,9 @@ If the text cannot be read, respond with:
           }
 
           console.log("Returning validated result")
+          // Store successful result in cache
+          imageAnalysisCache.set(hash, result);
+          console.log(`Stored result in cache for image hash: ${hash}`);
           return result
         } catch (parseError) {
           console.error("Error parsing OpenAI response:", parseError)
