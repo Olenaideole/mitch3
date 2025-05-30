@@ -155,6 +155,11 @@ export function Header() {
         <BookOpen className="mr-2 h-4 w-4" />
         Blog
       </Button>
+      <a href="https://mitch.tolt.io/login" target="_blank" rel="noopener noreferrer">
+        <Button variant="ghost" className="w-full justify-start">
+          Affiliate Program
+        </Button>
+      </a>
       {!user && (
         <>
           <Button variant="default" onClick={() => router.push("/signup")} className="justify-start">
@@ -201,6 +206,11 @@ export function Header() {
           <BookOpen className="mr-2 h-4 w-4" />
           Blog
         </Button>
+        <a href="https://mitch.tolt.io/login" target="_blank" rel="noopener noreferrer">
+          <Button variant="ghost">
+            Affiliate Program
+          </Button>
+        </a>
         {authUI}
       </div>
 
