@@ -1,12 +1,34 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { ArrowLeft, Check, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function UpgradePage() {
   const router = useRouter()
+  const initialTime = 48 * 60 * 60 // 48 hours in seconds
+  const [timeLeft, setTimeLeft] = useState(initialTime)
+
+  useEffect(() => {
+    if (timeLeft === 0) {
+      setTimeLeft(initialTime)
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prevTime) => (prevTime > 0 ? prevTime - 1 : 0))
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [timeLeft, initialTime])
+
+  const formatTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+  }
 
   const benefits = [
     "Unlimited photo scans",
@@ -46,10 +68,13 @@ export default function UpgradePage() {
               <CardHeader className="text-center">
                 <CardTitle className="text-2xl">You've reached your free scan limit</CardTitle>
                 <CardDescription className="text-base">
-                  Mitch keeps you safe — unlimited scans now available for just $25/month.
+                  Mitch keeps you safe — unlimited scans now available for just <span className="text-xl font-bold text-gray-500 line-through mr-2">$12</span>$4.5/month.
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="my-4 text-center text-2xl font-bold text-red-600">
+                  {formatTime(timeLeft)}
+                </div>
                 <div className="space-y-4">
                   <div className="flex justify-center">
                     <div className="flex">
@@ -77,7 +102,7 @@ export default function UpgradePage() {
                   onClick={handleUpgrade}
                   className="w-full bg-blue-600 py-6 text-lg font-medium hover:bg-blue-700"
                 >
-                  Get Unlimited Access for $25/month
+                  Get Unlimited Access for $4.5/month
                 </Button>
               </CardFooter>
             </Card>

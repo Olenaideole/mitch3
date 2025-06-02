@@ -27,7 +27,7 @@ export async function createCheckoutSession(userId: string) {
               name: "Mitch Premium Subscription",
               description: "Unlimited scans, priority support, and more",
             },
-            unit_amount: 2500, // $25.00 in cents
+            unit_amount: 450, // $4.50 in cents
             recurring: {
               interval: "month",
             },
