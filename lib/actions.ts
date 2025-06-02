@@ -128,6 +128,13 @@ If the text cannot be read, respond with:
       try {
         console.log(`API attempt ${attempts + 1} of ${maxAttempts}`);
 
+        // IMPORTANT: When handling errors from the API call below,
+        // be extremely careful not to log the raw error object or request details
+        // if they might inadvertently include the 'Authorization' header,
+        // as this could expose the XAI_API_KEY.
+        // Log only specific, safe error messages or sanitized details.
+        // The error handling in this try/catch block and the one wrapping the
+        // whole function have been updated to reflect this.
         const response = await fetch("https://api.x.ai/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -184,7 +191,22 @@ If the text cannot be read, respond with:
           throw parseError;
         }
       } catch (error) {
-        console.error(`API attempt ${attempts + 1} failed:`, error);
+        if (error instanceof Error && error.message.startsWith("Grok API error")) {
+          console.error(`API attempt ${attempts + 1} failed: ${error.message}`);
+        } else if (error instanceof Error) {
+          // Potentially a network error or other fetch-related error
+          // Accessing error.response might not be safe if 'error' is not an HTTP error object.
+          // Let's be cautious and primarily log the message.
+          let errorMessage = `API attempt ${attempts + 1} failed with network or fetch error: ${error.message}.`;
+          // @ts-ignore
+          if (error.response && error.response.status) {
+            // @ts-ignore
+            errorMessage += ` Status: ${error.response.status}`;
+          }
+          console.error(errorMessage);
+        } else {
+          console.error(`API attempt ${attempts + 1} failed with an unknown error.`);
+        }
         lastError = error;
         attempts++;
         if (attempts < maxAttempts) {
@@ -195,10 +217,62 @@ If the text cannot be read, respond with:
       }
     }
 
-    console.error("All API attempts failed:", lastError);
-    throw new Error(`Failed after ${maxAttempts} attempts: ${lastError instanceof Error ? lastError.message : String(lastError) || "Unknown error"}`);
+    if (lastError) { // Ensure lastError is not null before logging
+      if (lastError instanceof Error && lastError.message.startsWith("Grok API error")) {
+        console.error(`All API attempts failed. Last error: ${lastError.message}`);
+      } else if (lastError instanceof Error) {
+        let errorMsg = `All API attempts failed. Last network or fetch error: ${lastError.message}.`;
+        // @ts-ignore
+        if (lastError.response && lastError.response.status) {
+          // @ts-ignore
+          errorMsg += ` Status: ${lastError.response.status}`;
+        }
+        console.error(errorMsg);
+      } else {
+        console.error("All API attempts failed with an unknown error type.");
+      }
+    } else {
+      console.error("All API attempts failed, but lastError was null. This should not happen."); // Should ideally not occur
+    }
+
+    let finalErrorMessage = `Failed after ${maxAttempts} attempts. An unexpected error occurred.`;
+    if (lastError instanceof Error) {
+        if (lastError.message.startsWith("Grok API error")) {
+            // This message is from our controlled error construction, should be safe
+            finalErrorMessage = `Failed after ${maxAttempts} attempts: ${lastError.message}`;
+        } else {
+            // Potentially a network error or other fetch-related error.
+            // Avoid including the full lastError.message if it's not controlled.
+            // Server-side logs (handled by previous console.error sanitization) have more details.
+            finalErrorMessage = `Failed after ${maxAttempts} attempts. A server-side issue occurred (e.g. network, API availability). Error type: ${lastError.name || 'UnknownError'}. Check server logs for details.`;
+        }
+    } else if (lastError) {
+        finalErrorMessage = `Failed after ${maxAttempts} attempts due to an unknown issue. Check server logs for details.`;
+    }
+    // Note: The 'lastError' object itself is not included in the thrown error message to the client here,
+    // only specific parts of its message if it's a "Grok API error", or a generic message otherwise.
+    throw new Error(finalErrorMessage);
   } catch (error) {
-    console.error("Error analyzing image:", error);
+    // General error handler for the entire analyzeImage function
+    if (error instanceof Error && error.message.startsWith("Grok API error")) {
+      // This case might occur if the error propagates here, though less likely with the current structure
+      console.error(`Error analyzing image: ${error.message}`);
+    } else if (error instanceof Error && (error.message.includes("network") || error.message.includes("fetch") || (error.cause && typeof error.cause === 'object' && 'message' in error.cause && String(error.cause.message).includes("ECONNREFUSED")) )) {
+      // Check for common fetch/network related keywords or if error.cause indicates a network issue
+      let errorMessage = `Error analyzing image (network/fetch related): ${error.message}.`;
+      // @ts-ignore
+      if (error.response && error.response.status) {
+        // @ts-ignore
+        errorMessage += ` Status: ${error.response.status}`;
+      }
+      console.error(errorMessage);
+    } else if (error instanceof Error) {
+      // For other errors (e.g., sharp processing, file errors), logging the message is generally safe.
+      // Avoid logging the full 'error' object to be safe, stick to 'error.message'.
+      console.error(`Error analyzing image: ${error.message}`);
+    } else {
+      console.error("Error analyzing image: An unknown error occurred.");
+    }
     return {
       extracted_text: "", gluten_detected: "unknown", cross_contamination_risk: "high",
       additives_detected: [], diet_compatibility: { fodmap: "unknown", lactose_free: "unknown", keto: "unknown" },
