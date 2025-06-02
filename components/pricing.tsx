@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Check, Star, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,6 +17,29 @@ export function Pricing() {
   const [isLoading, setIsLoading] = useState(false)
 
   const isPremium = userProfile?.account_type === "premium"
+
+  // Countdown timer logic
+  const initialTime = 48 * 60 * 60 // 48 hours in seconds
+  const [timeLeft, setTimeLeft] = useState(initialTime)
+
+  useEffect(() => {
+    if (timeLeft === 0) {
+      setTimeLeft(initialTime)
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prevTime) => (prevTime > 0 ? prevTime - 1 : 0))
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [timeLeft, initialTime])
+
+  const formatTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+  }
 
   const handleGetPremium = async () => {
     if (!user) {
@@ -108,11 +131,15 @@ export function Pricing() {
             <CardTitle className="text-2xl">Premium</CardTitle>
             <CardDescription>Complete protection for your health</CardDescription>
             <div className="mt-4 flex items-end gap-2">
-              <div className="text-3xl font-bold">$25</div>
-              <div className="text-xl font-medium text-muted-foreground line-through">$32</div>
+              <div className="text-3xl font-bold">$4.5</div>
+              <div className="text-xl font-medium text-muted-foreground line-through">$12</div>
               <div className="text-sm">/month</div>
             </div>
             <p className="text-sm text-muted-foreground">Billed monthly</p>
+            {/* Countdown Timer Display */}
+            <div className="mt-3 text-center text-lg font-medium text-red-600">
+              Offer ends in: {formatTime(timeLeft)}
+            </div>
           </CardHeader>
           <CardContent className="flex-1">
             <ul className="mb-6 space-y-3">
