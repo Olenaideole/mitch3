@@ -132,7 +132,7 @@ If the text cannot be read, respond with:
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.XAI_API_KEY}`,
+            Authorization: `Bearer ${process.env.GROK_API_KEY}`,
           },
           body: JSON.stringify({
             model: "grok-2-vision-1212", 
@@ -180,7 +180,7 @@ If the text cannot be read, respond with:
           return result;
         } catch (parseError) {
           console.error("Error parsing Grok response:", parseError);
-          console.error("Response text:", text);
+          console.error("Error parsing Grok response. Response snippet (first 100 chars):", text.substring(0, 100));
           throw parseError;
         }
       } catch (error) {
